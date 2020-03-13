@@ -31,6 +31,6 @@ The core is implemented in Verilog.
 ## Xilinx FPGAs
 * Tool:   Xilinx Vivado
 * Device: Artix-7 - xc7a200tsbv484-2
-* LUT:    786
-* Regs:   1295
-* Fmax:   119 MHz
+* LUT:    792
+* Regs:   1328
+* Fmax:   172 MHz

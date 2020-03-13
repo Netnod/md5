@@ -58,7 +58,7 @@ module md5_core(
   localparam D0 = 32'h10325476;
 
   localparam CTRL_IDLE   = 3'h0;
-  localparam CTRL_NEXT   = 3'h1;
+  localparam CTRL_PIPE   = 3'h1;
   localparam CTRL_LOOP   = 3'h2;
   localparam CTRL_FINISH = 3'h3;
 
@@ -87,6 +87,9 @@ module md5_core(
   reg [31 : 0]  d_reg;
   reg [31 : 0]  d_new;
   reg           a_d_we;
+
+  reg [31 : 0]  pipe_b_reg;
+  reg [31 : 0]  pipe_b_new;
 
   reg           ready_reg;
   reg           ready_new;
@@ -356,12 +359,15 @@ module md5_core(
           b_reg             <= 32'h0;
           c_reg             <= 32'h0;
           d_reg             <= 32'h0;
+          pipe_b_reg        <= 32'h0;
           ready_reg         <= 1'h1;
           round_ctr_reg     <= 7'h0;
           md5_core_ctrl_reg <= CTRL_IDLE;
         end
       else
         begin
+          pipe_b_reg <= pipe_b_new;
+
           if (ready_we)
             ready_reg <= ready_new;
 
@@ -441,7 +447,9 @@ module md5_core(
       k = K(round_ctr_reg[5 : 0]);
 
       tmp_b0 = a_reg + f + w + k;
-      lr = rotate(tmp_b0, round_ctr_reg[5 : 0]);
+      pipe_b_new = tmp_b0;
+
+      lr = rotate(pipe_b_reg, round_ctr_reg[5 : 0]);
       tmp_b2 = lr + b_reg;
 
 
@@ -538,18 +546,25 @@ module md5_core(
                 round_ctr_rst     = 1'h1;
                 ready_new         = 1'h0;
                 ready_we          = 1'h1;
-                md5_core_ctrl_new = CTRL_NEXT;
+                md5_core_ctrl_new = CTRL_PIPE;
                 md5_core_ctrl_we  = 1'h1;
               end
           end
 
+        CTRL_PIPE:
+          begin
+            md5_core_ctrl_new = CTRL_LOOP;
+            md5_core_ctrl_we  = 1'h1;
+          end
 
-        CTRL_NEXT:
+        CTRL_LOOP:
           begin
             if (round_ctr_reg < 64)
               begin
-                update_round  = 1'h1;
-                round_ctr_inc = 1'h1;
+                update_round      = 1'h1;
+                round_ctr_inc     = 1'h1;
+                md5_core_ctrl_new = CTRL_PIPE;
+                md5_core_ctrl_we  = 1'h1;
               end
             else
               begin
